@@ -19,7 +19,10 @@ function App() {
       ? { username: config.openSkyUsername, password: config.openSkyPassword }
       : undefined;
 
-  const { aircraft, status, startTracking, stopTracking } = useAircraftTracking({ credentials });
+  const { aircraft, status, startTracking, stopTracking } = useAircraftTracking({
+    credentials,
+    adsbExchangeApiKey: config.adsbExchangeApiKey,
+  });
   const { mode, setMode, userHeading, setUserHeading, userTilt, setUserTilt } = useCameraMode();
   const interpolated = useInterpolation(aircraft, status);
 

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 
@@ -41,7 +41,7 @@ describe('App', () => {
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: /track/i }));
     });
-    expect(screen.getByText('TEST1')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('TEST1')).toBeInTheDocument());
   });
 
   it('renders camera controls', () => {
@@ -55,6 +55,6 @@ describe('App', () => {
     await act(async () => {
       await userEvent.click(screen.getByRole('button', { name: /track/i }));
     });
-    expect(screen.getByText('LIVE')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('LIVE')).toBeInTheDocument());
   });
 });

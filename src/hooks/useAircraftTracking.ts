@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { fetchAircraftADSBX } from '../services/adsbExchange';
 import type { OpenSkyCredentials } from '../services/opensky';
 import { fetchAircraft } from '../services/opensky';
 import type { AircraftState } from '../types/aircraft';
@@ -10,10 +11,11 @@ const DEFAULT_REFRESH_MS = 10_000;
 interface UseAircraftTrackingOptions {
   refreshMs?: number;
   credentials?: OpenSkyCredentials;
+  adsbExchangeApiKey?: string;
 }
 
 export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
-  const { refreshMs = DEFAULT_REFRESH_MS, credentials } = opts;
+  const { refreshMs = DEFAULT_REFRESH_MS, credentials, adsbExchangeApiKey } = opts;
 
   const [aircraft, setAircraft] = useState<AircraftState | null>(null);
   const [status, setStatus] = useState<TrackingStatus>(TrackingStatus.IDLE);
@@ -28,7 +30,16 @@ export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
     if (!icao24) return;
 
     try {
-      const data = await fetchAircraft(icao24, credentials);
+      let data: AircraftState | null = null;
+      if (adsbExchangeApiKey) {
+        try {
+          data = await fetchAircraftADSBX(icao24, adsbExchangeApiKey);
+        } catch {
+          data = await fetchAircraft(icao24, credentials);
+        }
+      } else {
+        data = await fetchAircraft(icao24, credentials);
+      }
       if (data) {
         setAircraft(data);
         setStatus(TrackingStatus.LIVE);
@@ -49,7 +60,7 @@ export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
         setStatus(TrackingStatus.SIGNAL_LOST);
       }
     }
-  }, [credentials]);
+  }, [credentials, adsbExchangeApiKey]);
 
   const startTracking = useCallback(
     async (icao24: string) => {
