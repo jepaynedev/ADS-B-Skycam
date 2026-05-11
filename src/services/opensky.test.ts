@@ -1,5 +1,5 @@
 import type { RawStateVector } from '../types/aircraft';
-import { fetchAircraft, parseStateVector } from './opensky';
+import { fetchAircraft, fetchAircraftByArea, parseStateVector } from './opensky';
 
 function makeRaw(overrides: Partial<Record<number, unknown>> = {}): RawStateVector {
   const defaults: RawStateVector = [
@@ -164,5 +164,73 @@ describe('fetchAircraft', () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const headers = init?.headers as Record<string, string> | undefined;
     expect(headers?.Authorization).toBeUndefined();
+  });
+});
+
+describe('fetchAircraftByArea', () => {
+  const bounds = { lamin: 40, lomin: -75, lamax: 42, lomax: -73 };
+  let fetchMock: jest.Mock;
+
+  beforeEach(() => {
+    fetchMock = jest.fn();
+    globalThis.fetch = fetchMock;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('encodes bounding box params in the URL', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ states: [] }),
+    });
+    await fetchAircraftByArea(bounds);
+    const [url] = fetchMock.mock.calls[0] as [string];
+    expect(url).toContain('lamin=40');
+    expect(url).toContain('lomin=-75');
+    expect(url).toContain('lamax=42');
+    expect(url).toContain('lomax=-73');
+  });
+
+  it('returns an array of AircraftState for multiple states', async () => {
+    const raw1 = makeRaw({ 0: 'aaa111' });
+    const raw2 = makeRaw({ 0: 'bbb222' });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ states: [raw1, raw2] }),
+    });
+    const results = await fetchAircraftByArea(bounds);
+    expect(results).toHaveLength(2);
+    expect(results[0].icao24).toBe('aaa111');
+    expect(results[1].icao24).toBe('bbb222');
+  });
+
+  it('filters out states where parseStateVector returns null (no position)', async () => {
+    const noPos = makeRaw({ 5: null, 6: null });
+    const valid = makeRaw({ 0: 'ccc333' });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ states: [noPos, valid] }),
+    });
+    const results = await fetchAircraftByArea(bounds);
+    expect(results).toHaveLength(1);
+    expect(results[0].icao24).toBe('ccc333');
+  });
+
+  it('returns empty array when states is absent', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({}),
+    });
+    expect(await fetchAircraftByArea(bounds)).toEqual([]);
+  });
+
+  it('returns empty array when states is empty', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ states: [] }),
+    });
+    expect(await fetchAircraftByArea(bounds)).toEqual([]);
   });
 });
