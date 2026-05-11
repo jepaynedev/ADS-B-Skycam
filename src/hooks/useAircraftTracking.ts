@@ -1,7 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { fetchAircraftADSBX } from '../services/adsbExchange';
 import type { OpenSkyCredentials } from '../services/opensky';
-import { fetchAircraft } from '../services/opensky';
 import type { AircraftState } from '../types/aircraft';
 import { TrackingStatus } from '../types/tracking';
 import { fetchAircraftAdsbLol } from '@/services/adsbLol';
