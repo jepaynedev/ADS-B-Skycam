@@ -12,7 +12,8 @@
     "format:check": "prettier --check src",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "knip": "knip"
   },
   "dependencies": {
     "react": "^19.1.0",
@@ -39,6 +40,7 @@
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
+    "knip": "^6.12.2",
     "prettier": "^3.8.3",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.59.2",
