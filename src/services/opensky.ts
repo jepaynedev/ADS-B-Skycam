@@ -1,5 +1,33 @@
 import type { AircraftState, RawStateVector } from '../types/aircraft';
 
+const OPENSKY_BASE = 'https://opensky-network.org/api';
+
+export interface OpenSkyCredentials {
+  username: string;
+  password: string;
+}
+
+export async function fetchAircraft(
+  icao24: string,
+  credentials?: OpenSkyCredentials,
+): Promise<AircraftState | null> {
+  const url = `${OPENSKY_BASE}/states/all?icao24=${icao24}`;
+
+  const headers: Record<string, string> = {};
+  if (credentials) {
+    const token = btoa(`${credentials.username}:${credentials.password}`);
+    headers['Authorization'] = `Basic ${token}`;
+  }
+
+  const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error(`OpenSky request failed: ${res.status}`);
+
+  const data = (await res.json()) as { states?: RawStateVector[] };
+  if (!data.states || data.states.length === 0) return null;
+
+  return parseStateVector(data.states[0]);
+}
+
 export function parseStateVector(raw: RawStateVector): AircraftState | null {
   const lat = raw[6];
   const lng = raw[5];

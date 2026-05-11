@@ -1,5 +1,5 @@
 import type { RawStateVector } from '../types/aircraft';
-import { parseStateVector } from './opensky';
+import { fetchAircraft, parseStateVector } from './opensky';
 
 function makeRaw(overrides: Partial<Record<number, unknown>> = {}): RawStateVector {
   const defaults: RawStateVector = [
@@ -92,5 +92,77 @@ describe('parseStateVector', () => {
   it('uses baro_altitude when both altitudes are null (returns 0)', () => {
     const raw = makeRaw({ 7: null, 13: null });
     expect(parseStateVector(raw)!.alt_m).toBe(0);
+  });
+});
+
+describe('fetchAircraft', () => {
+  const validState = makeRaw();
+  const mockResponse = (body: unknown, status = 200) =>
+    Promise.resolve({
+      ok: status >= 200 && status < 300,
+      status,
+      json: () => Promise.resolve(body),
+    } as Response);
+
+  let fetchMock: jest.Mock;
+
+  beforeEach(() => {
+    fetchMock = jest.fn().mockImplementation(() => mockResponse({ states: [validState] }));
+    globalThis.fetch = fetchMock;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('returns AircraftState on success', async () => {
+    const result = await fetchAircraft('abc123');
+    expect(result).not.toBeNull();
+    expect(result!.icao24).toBe('abc123');
+  });
+
+  it('constructs the correct URL with icao24', async () => {
+    await fetchAircraft('abc123');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('icao24=abc123'),
+      expect.anything(),
+    );
+  });
+
+  it('returns null when states array is empty', async () => {
+    fetchMock.mockImplementation(() => mockResponse({ states: [] }));
+    expect(await fetchAircraft('abc123')).toBeNull();
+  });
+
+  it('returns null when states field is absent', async () => {
+    fetchMock.mockImplementation(() => mockResponse({}));
+    expect(await fetchAircraft('abc123')).toBeNull();
+  });
+
+  it('throws on HTTP error response', async () => {
+    fetchMock.mockImplementation(() => mockResponse('', 429));
+    await expect(fetchAircraft('abc123')).rejects.toThrow('429');
+  });
+
+  it('re-throws network failures', async () => {
+    fetchMock.mockRejectedValue(new Error('Network error'));
+    await expect(fetchAircraft('abc123')).rejects.toThrow('Network error');
+  });
+
+  it('sends Basic Auth header when credentials provided', async () => {
+    await fetchAircraft('abc123', { username: 'user', password: 'pass' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: expect.stringContaining('Basic ') }),
+      }),
+    );
+  });
+
+  it('does not send Authorization header when no credentials', async () => {
+    await fetchAircraft('abc123');
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const headers = init?.headers as Record<string, string> | undefined;
+    expect(headers?.Authorization).toBeUndefined();
   });
 });
