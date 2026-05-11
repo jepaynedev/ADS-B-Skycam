@@ -13,7 +13,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "knip": "knip"
+    "knip": "knip",
+    "ci": "tsc --noEmit && npm run format:check && npm run lint && npm run test && npm run knip"
   },
   "dependencies": {
     "react": "^19.1.0",
