@@ -14,6 +14,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "knip": "knip",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
     "ci": "tsc --noEmit && npm run format:check && npm run lint && npm run test && npm run knip"
   },
   "dependencies": {
@@ -23,6 +26,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@jest/globals": "^30.4.1",
+    "@playwright/test": "^1.59.1",
     "@swc/core": "^1.15.33",
     "@swc/jest": "^0.2.39",
     "@testing-library/jest-dom": "^6.9.1",
