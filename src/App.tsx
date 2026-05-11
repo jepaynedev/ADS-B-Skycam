@@ -32,14 +32,29 @@ function App() {
 
   useEffect(() => {
     if (!config.googleMapsApiKey) return;
+
+    // If the script tag is already in the DOM (StrictMode double-invoke or HMR),
+    // don't add a second copy — Maps registers custom elements globally and
+    // re-registration throws. Instead just wait for the existing script to fire.
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src*="maps.googleapis.com"]',
+    );
+    if (existing) {
+      if (existing.dataset.loaded) setTimeout(() => setGoogleMapsLoaded(true), 0);
+      else existing.addEventListener('load', () => setGoogleMapsLoaded(true), { once: true });
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&v=weekly&libraries=maps3d`;
     script.async = true;
-    script.onload = () => setGoogleMapsLoaded(true);
-    document.head.appendChild(script);
-    return () => {
-      document.head.removeChild(script);
+    script.onload = () => {
+      script.dataset.loaded = '1';
+      setGoogleMapsLoaded(true);
     };
+    document.head.appendChild(script);
+    // No cleanup: removing the script after Maps has registered its custom
+    // elements causes "already defined" errors on StrictMode remount.
   }, []);
 
   async function handleAreaSearch(bounds: AreaBounds) {
