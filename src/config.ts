@@ -10,6 +10,6 @@ export const config = {
     (import.meta.env.DEV ? '/opensky/api' : 'https://opensky-network.org/api'),
   adsbLolBase:
     (import.meta.env.VITE_ADSB_LOL_BASE as string | undefined) ??
-    (import.meta.env.DEV ? '/adsb/v2' : 'https://api.adsb.lol/v2/'),
+    (import.meta.env.DEV ? '/adsb/v2' : 'https://api.adsb.lol/v2'),
 
 };
