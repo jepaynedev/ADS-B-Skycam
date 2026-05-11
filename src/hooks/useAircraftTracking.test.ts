@@ -108,6 +108,24 @@ describe('useAircraftTracking', () => {
     expect(result.current.status).toBe(TrackingStatus.IDLE);
   });
 
+  it('stays IDLE (not SIGNAL_LOST) when the very first fetch fails', async () => {
+    mockFetchAircraft.mockRejectedValue(new Error('CORS'));
+    const { result } = renderHook(() => useAircraftTracking());
+    await act(async () => {
+      result.current.startTracking('abc123');
+    });
+    expect(result.current.status).toBe(TrackingStatus.IDLE);
+  });
+
+  it('stays IDLE (not SIGNAL_LOST) when the very first fetch returns null', async () => {
+    mockFetchAircraft.mockResolvedValue(null);
+    const { result } = renderHook(() => useAircraftTracking());
+    await act(async () => {
+      result.current.startTracking('abc123');
+    });
+    expect(result.current.status).toBe(TrackingStatus.IDLE);
+  });
+
   it('uses ADS-B Exchange when apiKey is provided', async () => {
     mockFetchADSBX.mockResolvedValue(validAircraft);
     const { result } = renderHook(() => useAircraftTracking({ adsbExchangeApiKey: 'test-key' }));

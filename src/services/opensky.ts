@@ -1,6 +1,7 @@
+import { config } from '../config';
 import type { AircraftState, RawStateVector } from '../types/aircraft';
 
-const OPENSKY_BASE = 'https://opensky-network.org/api';
+const OPENSKY_BASE = config.openSkyBase;
 
 export interface OpenSkyCredentials {
   username: string;

@@ -50,5 +50,7 @@ export function useInterpolation(
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  return interpolated;
+  // Fall back to raw aircraft when the rAF loop hasn't fired yet (e.g. first render
+  // after tracking starts — avoids showing dashes until the first animation frame).
+  return interpolated ?? aircraft;
 }

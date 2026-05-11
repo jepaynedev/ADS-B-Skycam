@@ -46,7 +46,7 @@ function App() {
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&v=weekly&libraries=maps3d`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&v=weekly&libraries=maps3d&loading=async`;
     script.async = true;
     script.onload = () => {
       script.dataset.loaded = '1';

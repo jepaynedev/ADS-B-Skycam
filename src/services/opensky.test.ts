@@ -1,6 +1,8 @@
 import type { RawStateVector } from '../types/aircraft';
 import { fetchAircraft, fetchAircraftByArea, parseStateVector } from './opensky';
 
+jest.mock('../config');
+
 function makeRaw(overrides: Partial<Record<number, unknown>> = {}): RawStateVector {
   const defaults: RawStateVector = [
     'abc123', // 0 icao24

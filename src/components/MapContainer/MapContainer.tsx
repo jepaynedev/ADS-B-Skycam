@@ -9,6 +9,17 @@ interface MapContainerProps {
 export function MapContainer({ cameraParams, googleMapsLoaded }: MapContainerProps) {
   const mapRef = useRef<HTMLElement | null>(null);
 
+  // Give the map an initial viewpoint so it loads tiles immediately.
+  // Without center/range the element spins forever waiting for something to render.
+  useEffect(() => {
+    if (!googleMapsLoaded || !mapRef.current) return;
+    const mapEl = mapRef.current as google.maps.maps3d.Map3DElement;
+    mapEl.center = { lat: 39.5, lng: -98.35, altitude: 0 };
+    mapEl.range = 5_000_000;
+    mapEl.tilt = 0;
+    mapEl.heading = 0;
+  }, [googleMapsLoaded]);
+
   useEffect(() => {
     if (!cameraParams || !mapRef.current) return;
 
@@ -35,7 +46,7 @@ export function MapContainer({ cameraParams, googleMapsLoaded }: MapContainerPro
   return (
     <div className="map-container">
       {/* @ts-expect-error custom element ref */}
-      <gmp-map-3d ref={mapRef} style={{ width: '100%', height: '100%' }} />
+      <gmp-map-3d ref={mapRef} mode="satellite" style={{ width: '100%', height: '100%' }} />
     </div>
   );
 }

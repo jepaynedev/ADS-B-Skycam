@@ -4,6 +4,7 @@ import type { OpenSkyCredentials } from '../services/opensky';
 import { fetchAircraft } from '../services/opensky';
 import type { AircraftState } from '../types/aircraft';
 import { TrackingStatus } from '../types/tracking';
+import { fetchAircraftAdsbLol } from '@/services/adsbLol';
 
 const SIGNAL_LOST_MS = 60_000;
 const DEFAULT_REFRESH_MS = 10_000;
@@ -23,6 +24,7 @@ export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPingRef = useRef<number | null>(null);
+  const trackingStartRef = useRef<number | null>(null);
   const icao24Ref = useRef<string | null>(null);
 
   const poll = useCallback(async () => {
@@ -31,15 +33,16 @@ export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
 
     try {
       let data: AircraftState | null = null;
-      if (adsbExchangeApiKey) {
-        try {
-          data = await fetchAircraftADSBX(icao24, adsbExchangeApiKey);
-        } catch {
-          data = await fetchAircraft(icao24, credentials);
-        }
-      } else {
-        data = await fetchAircraft(icao24, credentials);
-      }
+      data = await fetchAircraftAdsbLol(icao24);
+      // if (adsbExchangeApiKey) {
+      //   try {
+      //     data = await fetchAircraftADSBX(icao24, adsbExchangeApiKey);
+      //   } catch {
+      //     data = await fetchAircraft(icao24, credentials);
+      //   }
+      // } else {
+      //   data = await fetchAircraft(icao24, credentials);
+      // }
       if (data) {
         setAircraft(data);
         setStatus(TrackingStatus.LIVE);
@@ -47,15 +50,21 @@ export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
         lastPingRef.current = now;
         setLastPingTime(now);
       } else {
-        const elapsed = lastPingRef.current ? Date.now() - lastPingRef.current : SIGNAL_LOST_MS;
+        // Use last-ping time if we've had one; fall back to tracking-start time.
+        // This prevents immediately jumping to SIGNAL_LOST on the very first
+        // failed fetch (e.g. CORS error or aircraft not yet broadcasting).
+        const refTime = lastPingRef.current ?? trackingStartRef.current!;
+        const elapsed = Date.now() - refTime;
         if (elapsed >= SIGNAL_LOST_MS) {
           setStatus(TrackingStatus.SIGNAL_LOST);
-        } else {
+        } else if (lastPingRef.current !== null) {
           setStatus(TrackingStatus.DEAD_RECKONING);
         }
+        // else: no successful ping yet and < 60s elapsed — keep current status
       }
     } catch {
-      const elapsed = lastPingRef.current ? Date.now() - lastPingRef.current : SIGNAL_LOST_MS;
+      const refTime = lastPingRef.current ?? trackingStartRef.current!;
+      const elapsed = Date.now() - refTime;
       if (elapsed >= SIGNAL_LOST_MS) {
         setStatus(TrackingStatus.SIGNAL_LOST);
       }
@@ -66,6 +75,7 @@ export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
     async (icao24: string) => {
       icao24Ref.current = icao24;
       lastPingRef.current = null;
+      trackingStartRef.current = Date.now();
 
       if (intervalRef.current) clearInterval(intervalRef.current);
 
@@ -84,6 +94,7 @@ export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
       intervalRef.current = null;
     }
     icao24Ref.current = null;
+    trackingStartRef.current = null;
     setStatus(TrackingStatus.IDLE);
     setAircraft(null);
     setLastPingTime(null);

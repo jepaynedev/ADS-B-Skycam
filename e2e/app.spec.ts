@@ -1,10 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Detect whether a Maps API key is configured in the dev server environment.
 // Playwright spins up the dev server via `npm run dev`, which loads .env.local,
 // so the key will be baked into the JS bundle at runtime. We check the JS source
 // to avoid duplicating the secret in playwright config.
-async function hasMapsKey(page: Parameters<Parameters<typeof test>[1]>[0]): Promise<boolean> {
+async function hasMapsKey(page: Page): Promise<boolean> {
   const src = await page.locator('script[src*="maps.googleapis.com"]').getAttribute('src');
   return !!src && !src.includes('key=undefined') && src.includes('key=');
 }
@@ -89,6 +89,31 @@ test.describe('ADS-B Skycam', () => {
     const hasLoadingState = await mapLoading.isVisible().catch(() => false);
     const hasMap = await map3d.count().then((n) => n > 0).catch(() => false);
     expect(hasLoadingState || hasMap).toBe(true);
+  });
+
+  test('tracks an aircraft and shows callsign in HUD (OpenSky mocked)', async ({ page }) => {
+    // Intercept OpenSky requests (via Vite proxy) and return a synthetic aircraft
+    await page.route('**/states/all*', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          states: [
+            [
+              'a0eb2b', 'UAL123  ', 'United States',
+              Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000),
+              -87.6298, 41.8781, 10000, false, 250, 90, 0, null, 10000, null, false, 0,
+            ],
+          ],
+        }),
+      }),
+    );
+
+    await page.getByPlaceholder(/icao24/i).fill('a0eb2b');
+    await page.getByRole('button', { name: /track/i }).click();
+
+    await expect(page.locator('.status-badge')).toContainText('LIVE', { timeout: 5_000 });
+    await expect(page.locator('.hud-overlay')).toContainText('UAL123', { timeout: 5_000 });
   });
 
   test('3D map loads when Google Maps API key is configured', async ({ page }) => {

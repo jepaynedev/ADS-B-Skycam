@@ -3,4 +3,5 @@ export const config = {
   openSkyUsername: undefined,
   openSkyPassword: undefined,
   adsbExchangeApiKey: undefined,
+  openSkyBase: 'https://opensky-network.org/api',
 };
