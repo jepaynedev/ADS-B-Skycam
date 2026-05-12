@@ -1,21 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\Jim\\\\source\\\\repos\\\\adsb-skycam\" -Recurse -Force | Select-Object -Property FullName | ForEach-Object { $_.FullName.Replace\\(\"C:\\\\Users\\\\Jim\\\\source\\\\repos\\\\adsb-skycam\\\\\", \"\"\\) } | Sort-Object)",
-      "Bash(git -C \"c:/Users/Jim/source/repos/adsb-skycam\" log --oneline)",
-      "Bash(npm create *)",
-      "Bash(npm run *)",
-      "Bash(git add *)",
-      "Bash(git commit -m ' *)",
-      "Bash(npx jest *)",
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(gh *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(npx knip *)",
       "WebSearch",
-      "WebFetch(domain:playwright.dev)",
-      "Bash(npm install *)",
-      "Bash(npx playwright *)",
-      "Bash(npx prettier *)",
-      "Bash(npm test *)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:api.adsb.lol)"
+      "WebFetch",
+      "Read(//c/Users/Jim/source/repos/**)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
     ]
   }
 }
