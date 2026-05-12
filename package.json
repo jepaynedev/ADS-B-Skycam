@@ -17,7 +17,9 @@
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
-    "ci": "tsc --noEmit && npm run format:check && npm run lint && npm run test && npm run knip"
+    "ci": "tsc --noEmit && npm run format:check && npm run lint && npm run test && npm run knip",
+    "verify": "prettier --write src && eslint --fix src && tsc --noEmit && knip && jest",
+    "prepare": "husky"
   },
   "dependencies": {
     "react": "^19.1.0",
@@ -42,13 +44,24 @@
     "eslint-plugin-jest": "^29.15.2",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "husky": "^9.1.7",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
     "knip": "^6.12.2",
+    "lint-staged": "^17.0.4",
     "prettier": "^3.8.3",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.59.2",
     "vite": "^6.3.5"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
   }
 }
