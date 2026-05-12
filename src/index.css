@@ -366,3 +366,172 @@ body {
   font-size: 0.78rem;
   text-align: center;
 }
+
+/* Minimap */
+
+.minimap-overlay {
+  position: absolute;
+  bottom: 24px;
+  left: 16px;
+  z-index: 10;
+}
+
+.minimap-toggle {
+  width: 36px;
+  height: 36px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #aaa;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.minimap-toggle:hover {
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+}
+
+.minimap-panel {
+  width: 260px;
+  height: 220px;
+  min-width: 180px;
+  min-height: 150px;
+  max-width: 50vw;
+  max-height: 60vh;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  overflow: hidden;
+  resize: both;
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(4px);
+}
+
+.minimap-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.minimap-title {
+  font-size: 0.7rem;
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  color: #888;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.minimap-header-btn {
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.72rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.minimap-header-btn:hover {
+  color: #ccc;
+}
+
+.minimap-header-btn--active {
+  color: #3b82f6;
+}
+
+.minimap-map-wrapper {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+.minimap-map {
+  width: 100%;
+  height: 100%;
+}
+
+.minimap-recenter {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #ccc;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.72rem;
+  padding: 3px 7px;
+  transition: background 0.15s;
+  z-index: 1;
+}
+
+.minimap-recenter:hover {
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+}
+
+.minimap-legend {
+  position: absolute;
+  bottom: 8px;
+  left: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.minimap-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.minimap-legend-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.minimap-legend-label {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+/* Mobile: full-width bottom strip */
+@media (max-width: 640px) {
+  .minimap-overlay {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .minimap-panel {
+    width: 100%;
+    height: 180px;
+    min-width: unset;
+    max-width: unset;
+    resize: none;
+  }
+}

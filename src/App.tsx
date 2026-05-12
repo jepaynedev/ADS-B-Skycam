@@ -4,6 +4,7 @@ import { DebugOverlay } from './components/DebugOverlay';
 import { FlightSelector } from './components/FlightSelector/FlightSelector';
 import { HudOverlay } from './components/HudOverlay/HudOverlay';
 import { MapContainer } from './components/MapContainer/MapContainer';
+import { Minimap } from './components/Minimap';
 import { useAircraftTracking } from './hooks/useAircraftTracking';
 import { useCameraMode } from './hooks/useCameraMode';
 import { useDebugLog } from './hooks/useDebugLog';
@@ -116,6 +117,12 @@ function App() {
         onStop={handleStop}
         isTracking={aircraft !== null}
         initialHex={initialHex}
+      />
+      <Minimap
+        aircraft={aircraft}
+        interpolated={interpolated}
+        status={status}
+        googleMapsLoaded={googleMapsLoaded}
       />
       <DebugOverlay events={events} />
     </div>
