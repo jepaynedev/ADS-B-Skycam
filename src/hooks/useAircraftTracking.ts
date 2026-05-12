@@ -5,7 +5,7 @@ import type { PollEvent } from '../types/debug';
 import { fetchAircraftAdsbLol } from '@/services/adsbLol';
 
 const SIGNAL_LOST_MS = 60_000;
-const DEFAULT_REFRESH_MS = 10_000;
+const DEFAULT_REFRESH_MS = 30_000;
 
 interface UseAircraftTrackingOptions {
   refreshMs?: number;
