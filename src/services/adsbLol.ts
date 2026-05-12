@@ -10,8 +10,8 @@ interface AdsbLolAircraft {
   lon?: number;
   alt_baro?: number | 'ground';
   alt_geom?: number;
-  gs?: number;        // knots
-  track?: number;     // degrees
+  gs?: number; // knots
+  track?: number; // degrees
   baro_rate?: number; // feet per minute
 }
 
@@ -29,9 +29,11 @@ export async function fetchAircraftAdsbLol(icao24: string): Promise<AircraftStat
   if (!ac || ac.lat == null || ac.lon == null) return null;
 
   const altFt =
-    typeof ac.alt_geom === 'number' ? ac.alt_geom
-    : typeof ac.alt_baro === 'number' ? ac.alt_baro
-    : 0;
+    typeof ac.alt_geom === 'number'
+      ? ac.alt_geom
+      : typeof ac.alt_baro === 'number'
+        ? ac.alt_baro
+        : 0;
 
   return {
     icao24: ac.hex,

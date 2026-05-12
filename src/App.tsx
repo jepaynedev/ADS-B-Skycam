@@ -6,23 +6,13 @@ import { MapContainer } from './components/MapContainer/MapContainer';
 import { useAircraftTracking } from './hooks/useAircraftTracking';
 import { useCameraMode } from './hooks/useCameraMode';
 import { useInterpolation } from './hooks/useInterpolation';
-import type { AreaBounds } from './services/opensky';
-import { fetchAircraftByArea } from './services/opensky';
 import { computeCameraParams } from './camera/cameraController';
 import { config } from './config';
 
 function App() {
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
 
-  const credentials =
-    config.openSkyUsername && config.openSkyPassword
-      ? { username: config.openSkyUsername, password: config.openSkyPassword }
-      : undefined;
-
-  const { aircraft, status, startTracking, stopTracking } = useAircraftTracking({
-    credentials,
-    adsbExchangeApiKey: config.adsbExchangeApiKey,
-  });
+  const { aircraft, status, startTracking, stopTracking } = useAircraftTracking();
   const { mode, setMode, userHeading, setUserHeading, userTilt, setUserTilt } = useCameraMode();
   const interpolated = useInterpolation(aircraft, status);
 
@@ -57,13 +47,6 @@ function App() {
     // elements causes "already defined" errors on StrictMode remount.
   }, []);
 
-  async function handleAreaSearch(bounds: AreaBounds) {
-    const aircraft = await fetchAircraftByArea(bounds, credentials);
-    if (aircraft.length > 0) {
-      void startTracking(aircraft[0].icao24);
-    }
-  }
-
   return (
     <div className="app">
       <MapContainer cameraParams={cameraParams} googleMapsLoaded={googleMapsLoaded} />
@@ -79,7 +62,6 @@ function App() {
       <FlightSelector
         onTrack={(icao24) => void startTracking(icao24)}
         onStop={stopTracking}
-        onAreaSearch={(bounds) => void handleAreaSearch(bounds)}
         isTracking={aircraft !== null}
       />
     </div>

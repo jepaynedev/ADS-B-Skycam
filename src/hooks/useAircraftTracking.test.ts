@@ -3,18 +3,12 @@ import type { AircraftState } from '../types/aircraft';
 import { TrackingStatus } from '../types/tracking';
 import { useAircraftTracking } from './useAircraftTracking';
 
-jest.mock('../services/opensky', () => ({
-  fetchAircraft: jest.fn(),
+jest.mock('../services/adsbLol', () => ({
+  fetchAircraftAdsbLol: jest.fn(),
 }));
 
-jest.mock('../services/adsbExchange', () => ({
-  fetchAircraftADSBX: jest.fn(),
-}));
-
-import { fetchAircraft } from '../services/opensky';
-import { fetchAircraftADSBX } from '../services/adsbExchange';
-const mockFetchAircraft = fetchAircraft as jest.Mock;
-const mockFetchADSBX = fetchAircraftADSBX as jest.Mock;
+import { fetchAircraftAdsbLol } from '../services/adsbLol';
+const mockFetch = fetchAircraftAdsbLol as jest.Mock;
 
 const validAircraft: AircraftState = {
   icao24: 'abc123',
@@ -31,7 +25,7 @@ const validAircraft: AircraftState = {
 describe('useAircraftTracking', () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    mockFetchAircraft.mockResolvedValue(validAircraft);
+    mockFetch.mockResolvedValue(validAircraft);
   });
 
   afterEach(() => {
@@ -68,11 +62,11 @@ describe('useAircraftTracking', () => {
     await act(async () => {
       result.current.startTracking('abc123');
     });
-    expect(mockFetchAircraft).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
     await act(async () => {
       jest.advanceTimersByTime(5000);
     });
-    expect(mockFetchAircraft).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('stopTracking clears the interval', async () => {
@@ -84,11 +78,11 @@ describe('useAircraftTracking', () => {
     await act(async () => {
       jest.advanceTimersByTime(10000);
     });
-    expect(mockFetchAircraft).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
   it('sets SIGNAL_LOST status after 60s with no data', async () => {
-    mockFetchAircraft.mockResolvedValue(null);
+    mockFetch.mockResolvedValue(null);
     const { result } = renderHook(() => useAircraftTracking({ refreshMs: 5000 }));
     await act(async () => {
       result.current.startTracking('abc123');
@@ -109,7 +103,7 @@ describe('useAircraftTracking', () => {
   });
 
   it('stays IDLE (not SIGNAL_LOST) when the very first fetch fails', async () => {
-    mockFetchAircraft.mockRejectedValue(new Error('CORS'));
+    mockFetch.mockRejectedValue(new Error('CORS'));
     const { result } = renderHook(() => useAircraftTracking());
     await act(async () => {
       result.current.startTracking('abc123');
@@ -118,41 +112,11 @@ describe('useAircraftTracking', () => {
   });
 
   it('stays IDLE (not SIGNAL_LOST) when the very first fetch returns null', async () => {
-    mockFetchAircraft.mockResolvedValue(null);
+    mockFetch.mockResolvedValue(null);
     const { result } = renderHook(() => useAircraftTracking());
     await act(async () => {
       result.current.startTracking('abc123');
     });
     expect(result.current.status).toBe(TrackingStatus.IDLE);
-  });
-
-  it('uses ADS-B Exchange when apiKey is provided', async () => {
-    mockFetchADSBX.mockResolvedValue(validAircraft);
-    const { result } = renderHook(() => useAircraftTracking({ adsbExchangeApiKey: 'test-key' }));
-    await act(async () => {
-      result.current.startTracking('abc123');
-    });
-    expect(mockFetchADSBX).toHaveBeenCalledWith('abc123', 'test-key');
-    expect(mockFetchAircraft).not.toHaveBeenCalled();
-    expect(result.current.status).toBe(TrackingStatus.LIVE);
-  });
-
-  it('falls back to OpenSky when no ADS-B Exchange key', async () => {
-    const { result } = renderHook(() => useAircraftTracking());
-    await act(async () => {
-      result.current.startTracking('abc123');
-    });
-    expect(mockFetchADSBX).not.toHaveBeenCalled();
-    expect(mockFetchAircraft).toHaveBeenCalled();
-  });
-
-  it('falls back to OpenSky when ADS-B Exchange throws', async () => {
-    mockFetchADSBX.mockRejectedValue(new Error('ADSBX error'));
-    const { result } = renderHook(() => useAircraftTracking({ adsbExchangeApiKey: 'test-key' }));
-    await act(async () => {
-      result.current.startTracking('abc123');
-    });
-    expect(mockFetchAircraft).toHaveBeenCalled();
-    expect(result.current.status).toBe(TrackingStatus.LIVE);
   });
 });

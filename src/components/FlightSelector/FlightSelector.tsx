@@ -1,17 +1,14 @@
 import { useState } from 'react';
-import type { AreaBounds } from '../../services/opensky';
 
 const ICAO24_RE = /^[0-9a-f]{1,6}$/i;
-const AREA_RADIUS_DEG = 2;
 
 interface FlightSelectorProps {
   onTrack: (icao24: string) => void;
   onStop: () => void;
-  onAreaSearch: (bounds: AreaBounds) => void;
   isTracking: boolean;
 }
 
-export function FlightSelector({ onTrack, onStop, onAreaSearch, isTracking }: FlightSelectorProps) {
+export function FlightSelector({ onTrack, onStop, isTracking }: FlightSelectorProps) {
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -24,18 +21,6 @@ export function FlightSelector({ onTrack, onStop, onAreaSearch, isTracking }: Fl
     }
     setError(null);
     onTrack(trimmed);
-  }
-
-  function handleSearchNearby() {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const { latitude: lat, longitude: lng } = pos.coords;
-      onAreaSearch({
-        lamin: lat - AREA_RADIUS_DEG,
-        lomin: lng - AREA_RADIUS_DEG,
-        lamax: lat + AREA_RADIUS_DEG,
-        lomax: lng + AREA_RADIUS_DEG,
-      });
-    });
   }
 
   return (
@@ -58,7 +43,6 @@ export function FlightSelector({ onTrack, onStop, onAreaSearch, isTracking }: Fl
       <div className="flight-selector-buttons">
         <button onClick={handleTrack}>Track</button>
         {isTracking && <button onClick={onStop}>Stop</button>}
-        <button onClick={handleSearchNearby}>Search nearby</button>
       </div>
     </div>
   );

@@ -1,12 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { AreaBounds } from '../../services/opensky';
 import { FlightSelector } from './FlightSelector';
 
 const defaultProps = {
   onTrack: jest.fn(),
   onStop: jest.fn(),
-  onAreaSearch: jest.fn(),
   isTracking: false,
 };
 
@@ -43,31 +41,5 @@ describe('FlightSelector', () => {
     render(<FlightSelector {...defaultProps} isTracking={true} />);
     await userEvent.click(screen.getByRole('button', { name: /stop/i }));
     expect(defaultProps.onStop).toHaveBeenCalled();
-  });
-
-  it('calls onAreaSearch with bounds from geolocation when Search nearby clicked', async () => {
-    const mockPosition = {
-      coords: { latitude: 40.7, longitude: -74.0 },
-    } as GeolocationPosition;
-
-    const getCurrentPositionMock = jest.fn<void, [PositionCallback]>((success) =>
-      success(mockPosition),
-    );
-    Object.defineProperty(navigator, 'geolocation', {
-      value: { getCurrentPosition: getCurrentPositionMock },
-      configurable: true,
-    });
-
-    render(<FlightSelector {...defaultProps} />);
-    await userEvent.click(screen.getByRole('button', { name: /search nearby/i }));
-
-    expect(defaultProps.onAreaSearch).toHaveBeenCalledWith(
-      expect.objectContaining<Partial<AreaBounds>>({
-        lamin: expect.any(Number),
-        lomin: expect.any(Number),
-        lamax: expect.any(Number),
-        lomax: expect.any(Number),
-      }),
-    );
   });
 });

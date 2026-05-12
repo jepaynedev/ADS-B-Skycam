@@ -4,8 +4,8 @@ import App from './App';
 
 jest.mock('./config');
 
-jest.mock('./services/opensky', () => ({
-  fetchAircraft: jest.fn().mockResolvedValue({
+jest.mock('./services/adsbLol', () => ({
+  fetchAircraftAdsbLol: jest.fn().mockResolvedValue({
     icao24: 'abc123',
     callsign: 'TEST1',
     lat: 40.7,
@@ -16,7 +16,6 @@ jest.mock('./services/opensky', () => ({
     vertical_rate: 0,
     timestamp: Date.now(),
   }),
-  fetchAircraftByArea: jest.fn().mockResolvedValue([]),
 }));
 
 // Register mock gmp-map-3d so MapContainer renders
