@@ -6,10 +6,16 @@ interface FlightSelectorProps {
   onTrack: (icao24: string) => void;
   onStop: () => void;
   isTracking: boolean;
+  initialHex?: string;
 }
 
-export function FlightSelector({ onTrack, onStop, isTracking }: FlightSelectorProps) {
-  const [input, setInput] = useState('');
+export function FlightSelector({
+  onTrack,
+  onStop,
+  isTracking,
+  initialHex = '',
+}: FlightSelectorProps) {
+  const [input, setInput] = useState(initialHex);
   const [error, setError] = useState<string | null>(null);
 
   function handleTrack() {

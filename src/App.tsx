@@ -9,10 +9,32 @@ import { useInterpolation } from './hooks/useInterpolation';
 import { computeCameraParams } from './camera/cameraController';
 import { config } from './config';
 
+const ICAO24_RE = /^[0-9a-f]{1,6}$/i;
+const initialHex = new URLSearchParams(window.location.search).get('hex')?.toLowerCase() ?? '';
+
 function App() {
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
 
   const { aircraft, status, startTracking, stopTracking } = useAircraftTracking();
+
+  useEffect(() => {
+    if (initialHex && ICAO24_RE.test(initialHex)) void startTracking(initialHex);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- intentionally runs once on mount
+
+  function handleTrack(icao24: string) {
+    const params = new URLSearchParams(window.location.search);
+    params.set('hex', icao24);
+    history.replaceState(null, '', `?${params.toString()}`);
+    void startTracking(icao24);
+  }
+
+  function handleStop() {
+    const params = new URLSearchParams(window.location.search);
+    params.delete('hex');
+    const qs = params.toString();
+    history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+    stopTracking();
+  }
   const { mode, setMode, userHeading, setUserHeading, userTilt, setUserTilt } = useCameraMode();
   const interpolated = useInterpolation(aircraft, status);
 
@@ -60,9 +82,10 @@ function App() {
         onTiltChange={setUserTilt}
       />
       <FlightSelector
-        onTrack={(icao24) => void startTracking(icao24)}
-        onStop={stopTracking}
+        onTrack={handleTrack}
+        onStop={handleStop}
         isTracking={aircraft !== null}
+        initialHex={initialHex}
       />
     </div>
   );
