@@ -223,7 +223,7 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
   // Custom drag-resize from the top-right handle
   function handleResizeStart(e: React.MouseEvent) {
     e.preventDefault();
-    const panel = panelRef.current;
+    const panel = panelRef.current!;
     if (!panel) return;
 
     const startX = e.clientX;
