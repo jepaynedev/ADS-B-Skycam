@@ -1,3 +1,10 @@
+export interface ConvergenceMetrics {
+  errorMag_m: number;
+  halfLife_s: number;
+  k_multiplier: number;
+  trend: 'shrinking' | 'stable' | 'growing' | 'snap';
+}
+
 export type DebugEvent =
   | { id: number; timestamp: number; type: 'request'; icao24: string }
   | {
@@ -9,6 +16,7 @@ export type DebugEvent =
       alt_m: number;
       speed_ms: number;
       heading: number;
+      convergence?: ConvergenceMetrics;
     }
   | { id: number; timestamp: number; type: 'no_data'; icao24: string }
   | { id: number; timestamp: number; type: 'error'; icao24: string; message: string }
@@ -31,6 +39,7 @@ export type PollEvent =
       alt_m: number;
       speed_ms: number;
       heading: number;
+      convergence?: ConvergenceMetrics;
     }
   | { type: 'no_data'; icao24: string }
   | { type: 'error'; icao24: string; message: string };

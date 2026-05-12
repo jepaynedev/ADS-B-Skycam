@@ -11,6 +11,7 @@ import { useInterpolation } from './hooks/useInterpolation';
 import { computeCameraParams } from './camera/cameraController';
 import { config } from './config';
 import type { AircraftState } from './types/aircraft';
+import type { ConvergenceMetrics } from './types/debug';
 
 const ICAO24_RE = /^[0-9a-f]{1,6}$/i;
 const initialHex = new URLSearchParams(window.location.search).get('hex')?.toLowerCase() ?? '';
@@ -19,8 +20,15 @@ function App() {
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
 
   const { events, addEvent } = useDebugLog();
-  const { aircraft, status, startTracking, stopTracking } = useAircraftTracking({
-    onPollEvent: addEvent,
+  const lastConvergenceRef = useRef<ConvergenceMetrics | null>(null);
+  const { aircraft, status, startTracking, stopTracking, refreshMs } = useAircraftTracking({
+    onPollEvent: (event) => {
+      if (event.type === 'success' && lastConvergenceRef.current) {
+        addEvent({ ...event, convergence: lastConvergenceRef.current });
+      } else {
+        addEvent(event);
+      }
+    },
   });
 
   useEffect(() => {
@@ -42,7 +50,9 @@ function App() {
     stopTracking();
   }
   const { mode, setMode, userHeading, setUserHeading, userTilt, setUserTilt } = useCameraMode();
-  const interpolated = useInterpolation(aircraft, status);
+  const interpolated = useInterpolation(aircraft, status, refreshMs / 1000, (m) => {
+    lastConvergenceRef.current = m;
+  });
 
   const cameraParams = interpolated
     ? computeCameraParams(interpolated, mode, { userHeading, userTilt })

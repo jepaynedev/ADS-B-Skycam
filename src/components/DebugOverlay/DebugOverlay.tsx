@@ -26,7 +26,12 @@ function EventRow({ event }: { event: DebugEvent }) {
       const hdg = Math.round(event.heading);
       const label = event.callsign || event.icao24;
       dotClass = 'dot-green';
-      desc = `✓ ${label} · ${alt}ft · ${spd}kts · ${hdg}°`;
+      let conv = '';
+      if (event.convergence) {
+        const { errorMag_m, halfLife_s, k_multiplier, trend } = event.convergence;
+        conv = ` · Δ${Math.round(errorMag_m)}m t½${halfLife_s.toFixed(1)}s ×${k_multiplier.toFixed(2)} ${trend}`;
+      }
+      desc = `✓ ${label} · ${alt}ft · ${spd}kts · ${hdg}°${conv}`;
       break;
     }
     case 'no_data':

@@ -107,5 +107,5 @@ export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
     setLastPingTime(null);
   }, []);
 
-  return { aircraft, status, lastPingTime, startTracking, stopTracking };
+  return { aircraft, status, lastPingTime, startTracking, stopTracking, refreshMs };
 }

@@ -1,5 +1,12 @@
 import type { AircraftState } from '../types/aircraft';
-import { interpolatePosition, lerpHeading } from './interpolation';
+import {
+  decayExp,
+  haversineMeters,
+  interpolatePosition,
+  lerpHeading,
+  signedHeadingDeltaDeg,
+  wrap360,
+} from './interpolation';
 
 describe('lerpHeading', () => {
   it('interpolates heading in the simple case', () => {
@@ -38,6 +45,73 @@ describe('lerpHeading', () => {
   it('result is always in [0, 360)', () => {
     expect(lerpHeading(355, 5, 0.5)).toBeGreaterThanOrEqual(0);
     expect(lerpHeading(355, 5, 0.5)).toBeLessThan(360);
+  });
+});
+
+describe('haversineMeters', () => {
+  it('returns 0 for identical points', () => {
+    expect(haversineMeters({ lat: 0, lng: 0 }, { lat: 0, lng: 0 })).toBe(0);
+  });
+
+  it('returns ~111195 m per degree latitude at equator', () => {
+    expect(haversineMeters({ lat: 0, lng: 0 }, { lat: 1, lng: 0 })).toBeCloseTo(111195, -1);
+  });
+
+  it('is symmetric', () => {
+    const a = { lat: 51.5, lng: -0.1 };
+    const b = { lat: 51.6, lng: 0.0 };
+    expect(haversineMeters(a, b)).toBeCloseTo(haversineMeters(b, a), 5);
+  });
+});
+
+describe('signedHeadingDeltaDeg', () => {
+  it('handles simple forward delta', () => {
+    expect(signedHeadingDeltaDeg(90, 60)).toBeCloseTo(30, 5);
+  });
+
+  it('wraps correctly across north: 10 from 350 = +20', () => {
+    expect(signedHeadingDeltaDeg(10, 350)).toBeCloseTo(20, 5);
+  });
+
+  it('wraps correctly across north: 350 from 10 = -20', () => {
+    expect(signedHeadingDeltaDeg(350, 10)).toBeCloseTo(-20, 5);
+  });
+
+  it('returns 0 for equal headings', () => {
+    expect(signedHeadingDeltaDeg(180, 180)).toBe(0);
+  });
+});
+
+describe('wrap360', () => {
+  it('wraps negative values', () => {
+    expect(wrap360(-10)).toBeCloseTo(350, 5);
+  });
+
+  it('wraps values over 360', () => {
+    expect(wrap360(370)).toBeCloseTo(10, 5);
+  });
+
+  it('leaves in-range values unchanged', () => {
+    expect(wrap360(180)).toBe(180);
+    expect(wrap360(0)).toBe(0);
+  });
+});
+
+describe('decayExp', () => {
+  it('halves the value over one half-life', () => {
+    expect(decayExp(100, 1, Math.LN2)).toBeCloseTo(50, 5);
+  });
+
+  it('returns the original value when dt is 0', () => {
+    expect(decayExp(100, 0, Math.LN2)).toBe(100);
+  });
+
+  it('decays toward 0 monotonically', () => {
+    const v0 = 100;
+    const v1 = decayExp(v0, 1, 0.5);
+    const v2 = decayExp(v1, 1, 0.5);
+    expect(v1).toBeLessThan(v0);
+    expect(v2).toBeLessThan(v1);
   });
 });
 
