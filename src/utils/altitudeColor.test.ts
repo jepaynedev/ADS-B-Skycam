@@ -1,39 +1,72 @@
-import { altitudeToColor, ALTITUDE_BANDS } from './altitudeColor';
+import { altitudeToColor, quantiseAlt, ALT_MIN_M, ALT_MAX_M, ALT_TICKS } from './altitudeColor';
+
+function parseHue(color: string): number {
+  const m = /hsl\((\d+)/.exec(color);
+  return m ? parseInt(m[1], 10) : -1;
+}
 
 describe('altitudeToColor', () => {
-  it('returns ground color for 0 m', () => {
-    expect(altitudeToColor(0)).toBe(ALTITUDE_BANDS[0].color);
+  it('returns red hue (0°) at ground level', () => {
+    expect(parseHue(altitudeToColor(0))).toBe(0);
   });
 
-  it('returns ground color for negative altitude', () => {
-    expect(altitudeToColor(-100)).toBe(ALTITUDE_BANDS[0].color);
+  it('returns violet hue (270°) at max altitude', () => {
+    expect(parseHue(altitudeToColor(ALT_MAX_M))).toBe(270);
   });
 
-  it('returns ground color for NaN', () => {
-    expect(altitudeToColor(NaN)).toBe(ALTITUDE_BANDS[0].color);
+  it('returns ~135° (green-ish) at mid altitude', () => {
+    const mid = (ALT_MIN_M + ALT_MAX_M) / 2;
+    const hue = parseHue(altitudeToColor(mid));
+    expect(hue).toBeGreaterThanOrEqual(130);
+    expect(hue).toBeLessThanOrEqual(140);
   });
 
-  it('returns ground color for Infinity', () => {
-    expect(altitudeToColor(Infinity)).toBe(ALTITUDE_BANDS[0].color);
+  it('clamps negative altitude to ground colour', () => {
+    expect(altitudeToColor(-500)).toBe(altitudeToColor(0));
   });
 
-  it('transitions to low band at 500 m', () => {
-    expect(altitudeToColor(500)).toBe(ALTITUDE_BANDS[1].color);
-    expect(altitudeToColor(499)).toBe(ALTITUDE_BANDS[0].color);
+  it('clamps above-max altitude to max colour', () => {
+    expect(altitudeToColor(ALT_MAX_M + 5000)).toBe(altitudeToColor(ALT_MAX_M));
   });
 
-  it('transitions to mid band at 3000 m', () => {
-    expect(altitudeToColor(3000)).toBe(ALTITUDE_BANDS[2].color);
-    expect(altitudeToColor(2999)).toBe(ALTITUDE_BANDS[1].color);
+  it('handles NaN gracefully', () => {
+    const color = altitudeToColor(NaN);
+    expect(typeof color).toBe('string');
+    expect(color.startsWith('hsl(')).toBe(true);
   });
 
-  it('transitions to high band at 7000 m', () => {
-    expect(altitudeToColor(7000)).toBe(ALTITUDE_BANDS[3].color);
-    expect(altitudeToColor(6999)).toBe(ALTITUDE_BANDS[2].color);
+  it('handles Infinity gracefully', () => {
+    const color = altitudeToColor(Infinity);
+    expect(typeof color).toBe('string');
   });
 
-  it('returns cruise color at and above 11000 m', () => {
-    expect(altitudeToColor(11000)).toBe(ALTITUDE_BANDS[4].color);
-    expect(altitudeToColor(12000)).toBe(ALTITUDE_BANDS[4].color);
+  it('hue strictly increases with altitude', () => {
+    const alts = [0, 1000, 3000, 6000, 9000, 12000];
+    const hues = alts.map((a) => parseHue(altitudeToColor(a)));
+    for (let i = 1; i < hues.length; i++) {
+      expect(hues[i]).toBeGreaterThan(hues[i - 1]);
+    }
+  });
+});
+
+describe('quantiseAlt', () => {
+  it('rounds down to nearest 500 m step', () => {
+    expect(quantiseAlt(0)).toBe(0);
+    expect(quantiseAlt(499)).toBe(0);
+    expect(quantiseAlt(500)).toBe(500);
+    expect(quantiseAlt(750)).toBe(500);
+    expect(quantiseAlt(3001)).toBe(3000);
+  });
+
+  it('clamps negative altitude to 0', () => {
+    expect(quantiseAlt(-100)).toBe(0);
+  });
+});
+
+describe('ALT_TICKS', () => {
+  it('is sorted low to high', () => {
+    for (let i = 1; i < ALT_TICKS.length; i++) {
+      expect(ALT_TICKS[i].alt_m).toBeGreaterThan(ALT_TICKS[i - 1].alt_m);
+    }
   });
 });

@@ -2,10 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { useTrackHistory } from '../../hooks/useTrackHistory';
 import type { AircraftState } from '../../types/aircraft';
 import { TrackingStatus } from '../../types/tracking';
-import { ALTITUDE_BANDS, altitudeToColor } from '../../utils/altitudeColor';
+import {
+  ALT_GRADIENT_CSS,
+  ALT_TICKS,
+  ALT_MAX_M,
+  ALT_MIN_M,
+  altitudeToColor,
+  quantiseAlt,
+} from '../../utils/altitudeColor';
 
-const PLANE_PATH = 'M 0,-10 L 6,8 L 0,4 L -6,8 Z';
+// A more realistic fixed-wing silhouette (pointing north = 0°)
+const PLANE_PATH =
+  'M 0,-12 L 2,-5 L 12,3 L 2,1 L 3,8 L 6,10 L 0,9 L -6,10 L -3,8 L -2,1 L -12,3 L -2,-5 Z';
+
 const HISTORY_VISIBLE_KEY = 'adsb.minimap.history-visible';
+const LEGEND_VISIBLE_KEY = 'adsb.minimap.legend-visible';
 const SIZE_KEY = 'adsb.minimap.size';
 
 function loadPersistedSize(): { width: number; height: number } | null {
@@ -22,10 +33,10 @@ function buildPlaneIcon(color: string, heading: number, opacity: number): google
     path: PLANE_PATH,
     fillColor: color,
     fillOpacity: opacity,
-    strokeColor: 'rgba(0,0,0,0.6)',
+    strokeColor: 'rgba(0,0,0,0.7)',
     strokeWeight: 0.5,
     rotation: heading,
-    scale: 1.8,
+    scale: 1.4,
     anchor: new google.maps.Point(0, 0),
   };
 }
@@ -35,25 +46,25 @@ interface TrailSegment {
   color: string;
 }
 
-function buildTrailSegments(
+export function buildTrailSegments(
   history: { lat: number; lng: number; alt_m: number }[],
 ): TrailSegment[] {
   if (history.length < 2) return [];
   const segments: TrailSegment[] = [];
   let segStart = 0;
-  let currentColor = altitudeToColor(history[0].alt_m);
+  let currentBucket = quantiseAlt(history[0].alt_m);
 
   for (let i = 1; i <= history.length; i++) {
-    const nextColor = i < history.length ? altitudeToColor(history[i].alt_m) : '';
-    if (nextColor !== currentColor || i === history.length) {
+    const nextBucket = i < history.length ? quantiseAlt(history[i].alt_m) : -1;
+    if (nextBucket !== currentBucket || i === history.length) {
       const end = i < history.length ? i : i - 1;
-      segments.push({
-        color: currentColor,
-        // Include the next point as overlap for visual continuity between segments
-        path: history.slice(segStart, end + 1).map((p) => ({ lat: p.lat, lng: p.lng })),
-      });
-      segStart = i - 1;
-      currentColor = nextColor;
+      const path = history.slice(segStart, end + 1).map((p) => ({ lat: p.lat, lng: p.lng }));
+      if (path.length >= 2) {
+        segments.push({ color: altitudeToColor(currentBucket + 250), path });
+      }
+      // Next segment starts at the transition point so segments share an endpoint
+      segStart = i;
+      currentBucket = nextBucket;
     }
   }
   return segments;
@@ -68,8 +79,12 @@ interface MinimapProps {
 
 export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: MinimapProps) {
   const [expanded, setExpanded] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(
     () => localStorage.getItem(HISTORY_VISIBLE_KEY) !== 'false',
+  );
+  const [legendVisible, setLegendVisible] = useState(
+    () => localStorage.getItem(LEGEND_VISIBLE_KEY) !== 'false',
   );
   const [userHasPanned, setUserHasPanned] = useState(false);
 
@@ -80,24 +95,23 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
-  const interpolatedRef = useRef(interpolated);
   const userHasPannedRef = useRef(false);
   const lastCenterTimeRef = useRef(0);
-
-  useEffect(() => {
-    interpolatedRef.current = interpolated;
-  });
 
   useEffect(() => {
     localStorage.setItem(HISTORY_VISIBLE_KEY, String(historyVisible));
   }, [historyVisible]);
 
+  useEffect(() => {
+    localStorage.setItem(LEGEND_VISIBLE_KEY, String(legendVisible));
+  }, [legendVisible]);
+
   // Initialize map on first expand
   useEffect(() => {
     if (!expanded || !googleMapsLoaded || !mapDivRef.current) return;
 
-    const center = interpolatedRef.current
-      ? { lat: interpolatedRef.current.lat, lng: interpolatedRef.current.lng }
+    const center = interpolated
+      ? { lat: interpolated.lat, lng: interpolated.lng }
       : { lat: 39.5, lng: -98.35 };
 
     const map = new google.maps.Map(mapDivRef.current, {
@@ -113,8 +127,8 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
       position: center,
       map,
       icon: buildPlaneIcon(
-        altitudeToColor(interpolatedRef.current?.alt_m ?? 0),
-        interpolatedRef.current?.heading ?? 0,
+        altitudeToColor(interpolated?.alt_m ?? 0),
+        interpolated?.heading ?? 0,
         1,
       ),
     });
@@ -133,6 +147,7 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
       userHasPannedRef.current = false;
       setUserHasPanned(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only init once on expand
   }, [expanded, googleMapsLoaded]);
 
   // Restore persisted size on open
@@ -145,7 +160,7 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
     }
   }, [expanded]);
 
-  // ResizeObserver: notify map of container resize + persist size
+  // ResizeObserver: notify google maps + persist size
   useEffect(() => {
     if (!expanded || !panelRef.current || !mapRef.current) return;
     const panel = panelRef.current;
@@ -160,7 +175,7 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
     return () => observer.disconnect();
   }, [expanded, googleMapsLoaded]);
 
-  // Update marker position + heading + color from interpolated state
+  // Update marker position + icon from smooth interpolated state
   useEffect(() => {
     if (!mapRef.current || !markerRef.current || !interpolated) return;
 
@@ -199,28 +214,66 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
           path: seg.path,
           strokeColor: seg.color,
           strokeWeight: 2.5,
-          strokeOpacity: 0.85,
+          strokeOpacity: 0.9,
           map: mapRef.current!,
         }),
     );
   }, [history, historyVisible, expanded, googleMapsLoaded]);
 
+  // Custom drag-resize from the top-right handle
+  function handleResizeStart(e: React.MouseEvent) {
+    e.preventDefault();
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = panel.offsetWidth;
+    const startH = panel.offsetHeight;
+
+    function onMove(ev: MouseEvent) {
+      const newW = Math.max(180, Math.min(window.innerWidth * 0.7, startW + (ev.clientX - startX)));
+      const newH = Math.max(
+        150,
+        Math.min(window.innerHeight * 0.8, startH - (ev.clientY - startY)),
+      );
+      panel.style.width = `${newW}px`;
+      panel.style.height = `${newH}px`;
+      if (mapRef.current) google.maps.event.trigger(mapRef.current, 'resize');
+    }
+
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (panel) {
+        const { width, height } = panel.getBoundingClientRect();
+        if (width > 0 && height > 0) {
+          localStorage.setItem(SIZE_KEY, JSON.stringify({ width, height }));
+        }
+      }
+    }
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
   function handleReCenter() {
     userHasPannedRef.current = false;
+    lastCenterTimeRef.current = 0;
     setUserHasPanned(false);
-    if (mapRef.current && interpolatedRef.current) {
-      mapRef.current.panTo({
-        lat: interpolatedRef.current.lat,
-        lng: interpolatedRef.current.lng,
-      });
+    setMenuOpen(false);
+    if (mapRef.current && interpolated) {
+      mapRef.current.setCenter({ lat: interpolated.lat, lng: interpolated.lng });
     }
   }
+
+  const canReCenter = userHasPanned && interpolated !== null;
 
   if (!expanded) {
     return (
       <div className="minimap-overlay">
         <button className="minimap-toggle" onClick={() => setExpanded(true)} title="Open minimap">
-          ⊞
+          ▲
         </button>
       </div>
     );
@@ -229,38 +282,96 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
   return (
     <div className="minimap-overlay">
       <div className="minimap-panel" ref={panelRef}>
+        {/* Drag-resize handle at top-right */}
+        <div
+          className="minimap-resize-handle"
+          onMouseDown={handleResizeStart}
+          title="Drag to resize"
+        >
+          ⬔
+        </div>
+
         <div className="minimap-header">
           <span className="minimap-title">MAP</span>
-          <button
-            className={`minimap-header-btn${historyVisible ? ' minimap-header-btn--active' : ''}`}
-            onClick={() => setHistoryVisible((v) => !v)}
-            title={historyVisible ? 'Hide trail' : 'Show trail'}
-          >
-            ◉ trail
-          </button>
-          <button
-            className="minimap-header-btn"
-            onClick={() => setExpanded(false)}
-            title="Close minimap"
-          >
-            ✕
-          </button>
+          <div className="minimap-header-controls">
+            <button
+              className="minimap-header-btn"
+              onClick={() => setMenuOpen((v) => !v)}
+              title="Settings"
+            >
+              ☰
+            </button>
+            <button
+              className="minimap-header-btn"
+              onClick={() => setExpanded(false)}
+              title="Collapse minimap"
+            >
+              ▼
+            </button>
+          </div>
         </div>
-        <div className="minimap-map-wrapper">
-          <div ref={mapDivRef} className="minimap-map" />
-          {userHasPanned && (
-            <button className="minimap-recenter" onClick={handleReCenter}>
+
+        {menuOpen && (
+          <div className="minimap-menu">
+            <label className="minimap-menu-item">
+              <input
+                type="checkbox"
+                checked={historyVisible}
+                onChange={() => setHistoryVisible((v) => !v)}
+              />
+              <span>Trail</span>
+            </label>
+            <label className="minimap-menu-item">
+              <input
+                type="checkbox"
+                checked={legendVisible}
+                onChange={() => setLegendVisible((v) => !v)}
+              />
+              <span>Altitude key</span>
+            </label>
+            <button
+              className={`minimap-menu-recenter${canReCenter ? '' : ' minimap-menu-recenter--disabled'}`}
+              onClick={handleReCenter}
+              disabled={!canReCenter}
+            >
               ⊕ Re-center
             </button>
-          )}
-          <div className="minimap-legend" aria-label="Altitude legend">
-            {[...ALTITUDE_BANDS].reverse().map((band) => (
-              <div key={band.label} className="minimap-legend-row">
-                <span className="minimap-legend-swatch" style={{ background: band.color }} />
-                <span className="minimap-legend-label">{band.label}</span>
-              </div>
-            ))}
           </div>
+        )}
+
+        <div className="minimap-map-wrapper">
+          <div ref={mapDivRef} className="minimap-map" />
+
+          {/* Floating re-center badge */}
+          {canReCenter && !menuOpen && (
+            <button className="minimap-recenter" onClick={handleReCenter}>
+              ⊕
+            </button>
+          )}
+
+          {/* Gradient altitude legend — right side */}
+          {legendVisible && (
+            <div className="minimap-legend" aria-label="Altitude legend">
+              <div className="minimap-legend-bar" style={{ background: ALT_GRADIENT_CSS }} />
+              <div className="minimap-legend-ticks">
+                {[...ALT_TICKS].reverse().map((tick) => {
+                  const pct = ((tick.alt_m - ALT_MIN_M) / (ALT_MAX_M - ALT_MIN_M)) * 100;
+                  // top% = 100 - pct because gradient top=high, bottom=low
+                  const top = 100 - pct;
+                  return (
+                    <div
+                      key={tick.alt_m}
+                      className="minimap-legend-tick"
+                      style={{ top: `${top}%` }}
+                    >
+                      <span className="minimap-legend-tick-line" />
+                      <span className="minimap-legend-tick-label">{tick.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
