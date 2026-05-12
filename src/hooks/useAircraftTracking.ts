@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AircraftState } from '../types/aircraft';
 import { TrackingStatus } from '../types/tracking';
+import type { PollEvent } from '../types/debug';
 import { fetchAircraftAdsbLol } from '@/services/adsbLol';
 
 const SIGNAL_LOST_MS = 60_000;
@@ -8,10 +9,11 @@ const DEFAULT_REFRESH_MS = 10_000;
 
 interface UseAircraftTrackingOptions {
   refreshMs?: number;
+  onPollEvent?: (event: PollEvent) => void;
 }
 
 export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
-  const { refreshMs = DEFAULT_REFRESH_MS } = opts;
+  const { refreshMs = DEFAULT_REFRESH_MS, onPollEvent } = opts;
 
   const [aircraft, setAircraft] = useState<AircraftState | null>(null);
   const [status, setStatus] = useState<TrackingStatus>(TrackingStatus.IDLE);
@@ -21,20 +23,35 @@ export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
   const lastPingRef = useRef<number | null>(null);
   const trackingStartRef = useRef<number | null>(null);
   const icao24Ref = useRef<string | null>(null);
+  const onPollEventRef = useRef(onPollEvent);
+  useEffect(() => {
+    onPollEventRef.current = onPollEvent;
+  });
 
   const poll = useCallback(async () => {
     const icao24 = icao24Ref.current;
     if (!icao24) return;
 
+    onPollEventRef.current?.({ type: 'request', icao24 });
+
     try {
       const data: AircraftState | null = await fetchAircraftAdsbLol(icao24);
       if (data) {
+        onPollEventRef.current?.({
+          type: 'success',
+          icao24,
+          callsign: data.callsign ?? '',
+          alt_m: data.alt_m,
+          speed_ms: data.speed_ms,
+          heading: data.heading,
+        });
         setAircraft(data);
         setStatus(TrackingStatus.LIVE);
         const now = Date.now();
         lastPingRef.current = now;
         setLastPingTime(now);
       } else {
+        onPollEventRef.current?.({ type: 'no_data', icao24 });
         // Use last-ping time if we've had one; fall back to tracking-start time.
         // This prevents immediately jumping to SIGNAL_LOST on the very first
         // failed fetch (e.g. CORS error or aircraft not yet broadcasting).
@@ -47,7 +64,12 @@ export function useAircraftTracking(opts: UseAircraftTrackingOptions = {}) {
         }
         // else: no successful ping yet and < 60s elapsed — keep current status
       }
-    } catch {
+    } catch (err) {
+      onPollEventRef.current?.({
+        type: 'error',
+        icao24,
+        message: err instanceof Error ? err.message : String(err),
+      });
       const refTime = lastPingRef.current ?? trackingStartRef.current!;
       const elapsed = Date.now() - refTime;
       if (elapsed >= SIGNAL_LOST_MS) {

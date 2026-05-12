@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CameraControls } from './components/CameraControls/CameraControls';
+import { DebugOverlay } from './components/DebugOverlay';
 import { FlightSelector } from './components/FlightSelector/FlightSelector';
 import { HudOverlay } from './components/HudOverlay/HudOverlay';
 import { MapContainer } from './components/MapContainer/MapContainer';
 import { useAircraftTracking } from './hooks/useAircraftTracking';
 import { useCameraMode } from './hooks/useCameraMode';
+import { useDebugLog } from './hooks/useDebugLog';
 import { useInterpolation } from './hooks/useInterpolation';
 import { computeCameraParams } from './camera/cameraController';
 import { config } from './config';
+import type { AircraftState } from './types/aircraft';
 
 const ICAO24_RE = /^[0-9a-f]{1,6}$/i;
 const initialHex = new URLSearchParams(window.location.search).get('hex')?.toLowerCase() ?? '';
@@ -15,7 +18,10 @@ const initialHex = new URLSearchParams(window.location.search).get('hex')?.toLow
 function App() {
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
 
-  const { aircraft, status, startTracking, stopTracking } = useAircraftTracking();
+  const { events, addEvent } = useDebugLog();
+  const { aircraft, status, startTracking, stopTracking } = useAircraftTracking({
+    onPollEvent: addEvent,
+  });
 
   useEffect(() => {
     if (initialHex && ICAO24_RE.test(initialHex)) void startTracking(initialHex);
@@ -41,6 +47,20 @@ function App() {
   const cameraParams = interpolated
     ? computeCameraParams(interpolated, mode, { userHeading, userTilt })
     : null;
+
+  const prevAircraftRef = useRef<AircraftState | null>(null);
+  useEffect(() => {
+    if (aircraft && cameraParams && aircraft !== prevAircraftRef.current) {
+      prevAircraftRef.current = aircraft;
+      addEvent({
+        type: 'camera_move',
+        lat: cameraParams.center.lat,
+        lng: cameraParams.center.lng,
+        alt_m: cameraParams.center.alt_m,
+        range: cameraParams.range,
+      });
+    }
+  }, [aircraft, cameraParams, addEvent]);
 
   useEffect(() => {
     if (!config.googleMapsApiKey) return;
@@ -87,6 +107,7 @@ function App() {
         isTracking={aircraft !== null}
         initialHex={initialHex}
       />
+      <DebugOverlay events={events} />
     </div>
   );
 }
