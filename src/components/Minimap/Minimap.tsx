@@ -75,9 +75,16 @@ interface MinimapProps {
   interpolated: AircraftState | null;
   status: TrackingStatus;
   googleMapsLoaded: boolean;
+  cameraTrail?: { lat: number; lng: number; alt_m: number }[];
 }
 
-export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: MinimapProps) {
+export function Minimap({
+  aircraft,
+  interpolated,
+  status,
+  googleMapsLoaded,
+  cameraTrail,
+}: MinimapProps) {
   const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(
@@ -95,6 +102,7 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
+  const cameraPolylinesRef = useRef<google.maps.Polyline[]>([]);
   const userHasPannedRef = useRef(false);
   const lastCenterTimeRef = useRef(0);
 
@@ -142,6 +150,8 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
       markerRef.current?.setMap(null);
       polylinesRef.current.forEach((p) => p.setMap(null));
       polylinesRef.current = [];
+      cameraPolylinesRef.current.forEach((p) => p.setMap(null));
+      cameraPolylinesRef.current = [];
       mapRef.current = null;
       markerRef.current = null;
       userHasPannedRef.current = false;
@@ -201,7 +211,7 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
     }
   }, [interpolated, status]);
 
-  // Rebuild trail polylines when history or visibility changes
+  // Rebuild API trail polylines when history or visibility changes
   useEffect(() => {
     if (!mapRef.current) return;
     polylinesRef.current.forEach((p) => p.setMap(null));
@@ -219,6 +229,24 @@ export function Minimap({ aircraft, interpolated, status, googleMapsLoaded }: Mi
         }),
     );
   }, [history, historyVisible, expanded, googleMapsLoaded]);
+
+  // Rebuild camera trail polyline when cameraTrail prop changes
+  useEffect(() => {
+    if (!mapRef.current) return;
+    cameraPolylinesRef.current.forEach((p) => p.setMap(null));
+    cameraPolylinesRef.current = [];
+    if (!cameraTrail || cameraTrail.length < 2) return;
+
+    cameraPolylinesRef.current = [
+      new google.maps.Polyline({
+        path: cameraTrail.map((p) => ({ lat: p.lat, lng: p.lng })),
+        strokeColor: '#38bdf8',
+        strokeWeight: 1.5,
+        strokeOpacity: 0.65,
+        map: mapRef.current!,
+      }),
+    ];
+  }, [cameraTrail, expanded, googleMapsLoaded]);
 
   // Custom drag-resize from the top-right handle
   function handleResizeStart(e: React.MouseEvent) {
